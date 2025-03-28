@@ -8,11 +8,13 @@ public class WFCMaker {
     // the grid of ints to output
     int[][] grid;
     // directions that are concidered neighbors
-    static int[][] dirs = {{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1},{0,-1},{1,-1}};
+    static int[][] dirs = 
+    //{{1,0},{0,1},{-1,0},{0,-1}};
+    {{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1},{0,-1},{1,-1}};
 
     WFCMaker.Tile[] tiles;
 
-    Random r = new Random();
+    Random r;
 
     double reqPercent = 8.0/8.0;
 
@@ -20,7 +22,8 @@ public class WFCMaker {
 
     int ysize;
 
-    public WFCMaker(int[][] startingGrid, int xsize, int ysize){
+    public WFCMaker(int[][] startingGrid, int xsize, int ysize, long seed){
+        r = new Random(seed);
         this.xsize = xsize;
         this.ysize = ysize;
         grid = new int[ysize][xsize];
@@ -55,7 +58,7 @@ public class WFCMaker {
                 // add it if it is
                 if(newArrangement){
                     if(startingGrid[x][y]==2)
-                    System.out.println("x: " + x + " y: " + y + "t: \n" + dogunut(arrangement));
+                    //System.out.println("x: " + x + " y: " + y + "t: \n" + dogunut(arrangement));
                     t.addValidNeighbor(arrangement);
                 }
             }
@@ -159,6 +162,7 @@ public class WFCMaker {
             }
         }
         System.out.println(arrToString(grid));
+        WFCrenderer wfcr = new WFCrenderer(grid);
     }
 
     private class Tile{
@@ -213,14 +217,14 @@ public class WFCMaker {
         @Override
         public String toString(){
             String s = "Tile of type: " + type + " \nvalid arr: \n";
-            s += dnut(validNeighbors.toArray(new int[0][0]));
+            //s += dnut(validNeighbors.toArray(new int[0][0]));
             return s;
         }
     }
 
     protected int getTileAt(int x, int y){
         if(x<0||x>=xsize||y<0||y>=ysize){
-            return -2;
+            return -1;
         }
         return grid[y][x];
     }
@@ -251,19 +255,6 @@ public class WFCMaker {
         return a[3] + ", " + a[2] + ", " + a[1] + "\n" + a[4] + ",  , " + a[0] + "\n" + a[5] + ", " + a[6] + ", " + a[7];
     }
 
-    private boolean arrequals(int[] arr1, int[] arr2){
-        int[] offsets = {0,2,4,6};
-        boolean[] good = {false,false,false,false};
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 8; j++) {
-                if(arr1[j]!=arr2[(j+offsets[i])%8]){
-                    good[i] = false;
-                }
-            }
-        }
-        return good[0]||good[1]||good[2]||good[3];
-    }
-
     private String arrToString(int[][] arr){
         String s = "[\n";
         for (int y = 0; y < arr.length; y++) {
@@ -284,13 +275,13 @@ public class WFCMaker {
         {
             {1,1,1,1,1,1,1},
             {1,1,2,2,2,1,1},
-            {1,1,2,3,2,1,1},
-            {2,2,2,2,2,2,2},
+            {2,2,2,3,2,2,2},
+            {1,1,2,2,2,1,1},
             {1,1,1,1,1,1,1},
             {1,1,1,1,1,1,1},
             {1,1,1,1,1,1,1},
         }
         
-        ,7, 7);
+        ,3, 3, 2);
     }
 }
