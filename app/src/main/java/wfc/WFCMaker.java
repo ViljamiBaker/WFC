@@ -1,8 +1,11 @@
 package wfc;
 
+import java.net.InterfaceAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+
+import org.checkerframework.checker.index.qual.GTENegativeOne;
 
 public class WFCMaker {
     // the grid of ints to output
@@ -23,7 +26,11 @@ public class WFCMaker {
     int ysize;
 
     public WFCMaker(int[][] startingGrid, int xsize, int ysize, long seed){
-        r = new Random(seed);
+        if (seed == -1){
+            r = new Random(seed);
+        }else{
+            r = new Random();
+        }
         this.xsize = xsize;
         this.ysize = ysize;
         grid = new int[ysize][xsize];
@@ -58,7 +65,7 @@ public class WFCMaker {
                 // add it if it is
                 if(newArrangement){
                     if(startingGrid[x][y]==2)
-                    //System.out.println("x: " + x + " y: " + y + "t: \n" + dogunut(arrangement));
+                    System.out.println("x: " + x + " y: " + y + "t: \n" + drawArrayWithDirs(arrangement));
                     t.addValidNeighbor(arrangement);
                 }
             }
@@ -74,7 +81,7 @@ public class WFCMaker {
             }
         }
         boolean done = false;
-
+        ArrayList<int[]> interestedTiles = new ArrayList<>();
         while(!done){
             // loop over all cells and find what they could be
             boolean[][][] canBe = new boolean[xsize][ysize][tiles.length];
@@ -99,6 +106,20 @@ public class WFCMaker {
                 for (int y = 0; y < ysize; y++) {
                     for (int x = 0; x < xsize; x++) {
                         if(getTileAt(x, y) != -1) continue;
+                        boolean interested = false;
+                        if(!interestedTiles.isEmpty()){
+                            for (int i = 0; i < interestedTiles.size(); i++) {
+                                if(interestedTiles.get(i)[0]==x && interestedTiles.get(i)[1]==y){
+                                    interested = true;
+                                    break;
+                                }
+                            }
+                        }else{
+                            interested = true;
+                        }
+                        if(!interested){
+                            continue;
+                        }
                         // loop over all of the possibilites
                         int possibilityCount = 0;
                         for (int i = 0; i < canBe[x][y].length; i++) {
@@ -115,6 +136,7 @@ public class WFCMaker {
                         //}
                         // if we found one with the same ammount add it to the list
                         if(possibilityCount!=0){
+
                             LPT.add(new int[] {x,y});
                         }
                     }
@@ -130,6 +152,8 @@ public class WFCMaker {
             }
             if (LPT.size()==0) {
                 System.out.println("LPT No possiblities found :((((");
+                System.out.println(arrToString(grid));
+                interestedTiles.clear();
                 for (int x = 0; x < xsize; x++) {
                     for (int y = 0; y < ysize; y++) {
                         setTileAt(x, y, -1);
@@ -141,17 +165,8 @@ public class WFCMaker {
             // set one of the least possiblities to a possiblitiy
 
             int randindex = r.nextInt(LPT.size());
-
-            ArrayList<Integer> possiblities = new ArrayList<>();
-
-            for (int i = 0; i < canBe[LPT.get(randindex)[0]][LPT.get(randindex)[1]].length; i++) {
-                if(canBe[LPT.get(randindex)[0]][LPT.get(randindex)[1]][i]){
-                    possiblities.add(tiles[i].type);
-                }
-            }
-            int randindex2 = r.nextInt(possiblities.size());
             
-            setTileAt(LPT.get(randindex)[0], LPT.get(randindex)[1], possiblities.get(randindex2));
+            collapse(xsize, ysize);
             // final check
             done = true;
             for (int y = 0; y < ysize; y++) {
@@ -162,7 +177,25 @@ public class WFCMaker {
             }
         }
         System.out.println(arrToString(grid));
-        WFCrenderer wfcr = new WFCrenderer(grid);
+        WFCrenderer wfcr = new WFCrenderer(new int[][][] {grid, startingGrid});
+    }
+    
+    private void collapse(int x, int y, boolean[][][] canBe){
+
+        ArrayList<Integer> possiblities = new ArrayList<>();
+
+        for (int i = 0; i < canBe[x][y].length; i++) {
+            if(canBe[x][y][i]){
+                possiblities.add(tiles[i].type);
+            }
+        }
+        int randindex2 = r.nextInt(possiblities.size());
+        
+        setTileAt(x, y, possiblities.get(randindex2));
+            
+        for (int[] dir : dirs) {
+            interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
+        }
     }
 
     private class Tile{
@@ -237,22 +270,51 @@ public class WFCMaker {
     }
 
     protected int getTileAt(int[][] grid, int x, int y){
-        if(x<0||x>=xsize||y<0||y>=ysize){
+        if(x<0||x>=grid[0].length||y<0||y>=grid.length){
             return -2;
         }
         return grid[x][y];
     }
 
-    private String dnut(int[][] a){
-        String s = "";
-        for (int[] is : a) {
-            s+=dogunut(is) + "\n";
+    private String drawArrayWithDirs(int[] a){
+        int maxx = -1000;
+        int minx = 1000;
+        int maxy = -1000;
+        int miny = 1000;
+        for (int i = 0; i < dirs.length; i++) {
+            if(dirs[i][0]>maxx){
+                maxx = dirs[i][0];
+            }
+            if(dirs[i][0]<minx){
+                minx = dirs[i][0];
+            }
+            if(dirs[i][1]>maxy){
+                maxy = dirs[i][1];
+            }
+            if(dirs[i][1]<miny){
+                miny = dirs[i][1];
+            }
         }
+        String[][] strs = new String[maxx-minx+1][maxy-miny+1];
+        for (int x = 0; x < strs.length; x++) {
+            for (int y = 0; y < strs[x].length; y++) {
+                strs[x][y] = " ";
+            }
+        }
+        for (int i = 0; i < dirs.length; i++) {
+            strs[dirs[i][1]-minx][dirs[i][1]-miny] = ""+a[i];
+        }
+        String s = "";
+        for (int y = 0; y < strs.length; y++) {
+            s += "";
+            for (int x = 0; x < strs[0].length; x++) {
+                try {if(Integer.valueOf(strs[y][x])>0) s+=" ";} catch (Exception e) {s+=" ";}
+                s+= strs[y][x];
+            }
+            s += "\n";
+        }
+        s+= "";
         return s;
-    }
-
-    private String dogunut(int[] a){
-        return a[3] + ", " + a[2] + ", " + a[1] + "\n" + a[4] + ",  , " + a[0] + "\n" + a[5] + ", " + a[6] + ", " + a[7];
     }
 
     private String arrToString(int[][] arr){
@@ -282,6 +344,6 @@ public class WFCMaker {
             {1,1,1,1,1,1,1},
         }
         
-        ,3, 3, 2);
+        ,7, 7, -1);
     }
 }
