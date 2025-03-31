@@ -26,7 +26,7 @@ public class WFCMaker {
     int ysize;
 
     public WFCMaker(int[][] startingGrid, int xsize, int ysize, long seed){
-        if (seed == -1){
+        if (seed != -1){
             r = new Random(seed);
         }else{
             r = new Random();
@@ -164,38 +164,34 @@ public class WFCMaker {
 
             // set one of the least possiblities to a possiblitiy
 
-            int randindex = r.nextInt(LPT.size());
+            int ri = r.nextInt(LPT.size());
+            int x = LPT.get(ri)[0];
+            int y = LPT.get(ri)[1];
+            ArrayList<Integer> possiblities = new ArrayList<>();
+
+            for (int i = 0; i < canBe[x][y].length; i++) {
+                if(canBe[x][y][i]){
+                    possiblities.add(tiles[i].type);
+                }
+            }
+            int randindex2 = r.nextInt(possiblities.size());
             
-            collapse(xsize, ysize);
+            setTileAt(x, y, possiblities.get(randindex2));
+                
+            for (int[] dir : dirs) {
+                interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
+            }
             // final check
             done = true;
-            for (int y = 0; y < ysize; y++) {
-                for (int x = 0; x < xsize; x++) {
-                    if(getTileAt(x, y) == -1)
+            for (int i = 0; i < ysize; i++) {
+                for (int j = 0; j < xsize; j++) {
+                    if(getTileAt(j, i) == -1)
                     done = false;
                 }
             }
         }
         System.out.println(arrToString(grid));
         WFCrenderer wfcr = new WFCrenderer(new int[][][] {grid, startingGrid});
-    }
-    
-    private void collapse(int x, int y, boolean[][][] canBe){
-
-        ArrayList<Integer> possiblities = new ArrayList<>();
-
-        for (int i = 0; i < canBe[x][y].length; i++) {
-            if(canBe[x][y][i]){
-                possiblities.add(tiles[i].type);
-            }
-        }
-        int randindex2 = r.nextInt(possiblities.size());
-        
-        setTileAt(x, y, possiblities.get(randindex2));
-            
-        for (int[] dir : dirs) {
-            interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
-        }
     }
 
     private class Tile{
@@ -344,6 +340,6 @@ public class WFCMaker {
             {1,1,1,1,1,1,1},
         }
         
-        ,7, 7, -1);
+        ,6, 6, -1);
     }
 }
