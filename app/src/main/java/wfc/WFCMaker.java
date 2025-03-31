@@ -64,8 +64,6 @@ public class WFCMaker {
                 }
                 // add it if it is
                 if(newArrangement){
-                    if(startingGrid[x][y]==2)
-                    System.out.println("x: " + x + " y: " + y + "t: \n" + drawArrayWithDirs(arrangement));
                     t.addValidNeighbor(arrangement);
                 }
             }
@@ -82,14 +80,30 @@ public class WFCMaker {
         }
         boolean done = false;
         ArrayList<int[]> interestedTiles = new ArrayList<>();
+        int[][] currentChanges = new int[ysize][xsize];
+        Change initialChange = null;
+        ArrayList<Integer> changePath = new ArrayList<>();
         while(!done){
+            if(initialChange == null){
+                initialChange = new Change(r.nextInt(xsize), r.nextInt(ysize), r.nextInt(tiles.length));
+            }
+            for (int y = 0; y < ysize; y++) {
+                for (int x = 0; x < xsize; x++) {
+                    setTileAt(x, y, -1, currentChanges);
+                }
+            }      
+            Change currentChange = initialChange;
+            for (int i = 0; i < changePath.size(); i++) {
+                setTileAt(currentChange.x, currentChange.y, currentChange.to, currentChanges);
+                currentChange = currentChange.getChildren()[changePath.get(i)];
+            }
             // loop over all cells and find what they could be
             boolean[][][] canBe = new boolean[xsize][ysize][tiles.length];
             for (int y = 0; y < ysize; y++) {
                 for (int x = 0; x < xsize; x++) {
                     if(getTileAt(x, y)!=-1)continue;
                     for (int i = 0; i < tiles.length; i++) {
-                        canBe[x][y][i] = tiles[i].checkPos(x, y);
+                        canBe[x][y][i] = tiles[i].checkPos(x, y, currentChanges);
                     }
                 }
             }
@@ -128,12 +142,12 @@ public class WFCMaker {
                             }
                         }
                         // if we found the new least change it and continue the while loop
-                        //if(possibilityCount<leastPossiblilities&&possibilityCount!=0){
-                        //    LPT.clear();
-                        //    leastPossiblilities = possibilityCount;
-                        //    bad = true;
-                        //    break;
-                        //}
+                        if(possibilityCount<leastPossiblilities&&possibilityCount!=0){
+                            LPT.clear();
+                            leastPossiblilities = possibilityCount;
+                            bad = true;
+                            break;
+                        }
                         // if we found one with the same ammount add it to the list
                         if(possibilityCount!=0){
 
@@ -151,13 +165,37 @@ public class WFCMaker {
                 foundLeast = true;
             }
             if (LPT.size()==0) {
-                System.out.println("LPT No possiblities found :((((");
+                System.out.println("No possiblities found :((((");
                 System.out.println(arrToString(grid));
                 interestedTiles.clear();
                 for (int x = 0; x < xsize; x++) {
                     for (int y = 0; y < ysize; y++) {
                         setTileAt(x, y, -1);
                     }
+                }
+                currentChange.goodChange = false;
+                for (int y = 0; y < ysize; y++) {
+                    for (int x = 0; x < xsize; x++) {
+                        setTileAt(x, y, -1, currentChanges);
+                    }
+                }      
+                currentChange = initialChange;
+                changePath.remove(changePath.size()-1);
+                for (int i = 0; i < changePath.size(); i++) {
+                    setTileAt(initialChange.x, initialChange.y, initialChange.to, currentChanges);
+                    currentChange = currentChange.getChildren()[changePath.get(i)];
+                }
+                System.out.println(currentChange.getChildren().length);
+                boolean badPath = true;
+                for (int i = 0; i < currentChange.getChildren().length; i++) {
+                    if(currentChange.getChildren()[i].goodChange){
+                        changePath.add(i);
+                        badPath = false;
+                        break;
+                    }
+                }
+                if(badPath){
+                    changePath.remove(changePath.size()-1);
                 }
                 continue;
             }
@@ -176,8 +214,12 @@ public class WFCMaker {
             }
             int randindex2 = r.nextInt(possiblities.size());
             
-            setTileAt(x, y, possiblities.get(randindex2));
-                
+            Change newChange = new Change(x, y, possiblities.get(randindex2));
+
+            changePath.add(currentChange.getChildren().length);
+
+            currentChange.addChild(newChange);
+
             for (int[] dir : dirs) {
                 interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
             }
@@ -185,13 +227,33 @@ public class WFCMaker {
             done = true;
             for (int i = 0; i < ysize; i++) {
                 for (int j = 0; j < xsize; j++) {
-                    if(getTileAt(j, i) == -1)
+                    if(getTileAt(currentChanges, j, i) == -1)
                     done = false;
                 }
             }
+            System.out.println(arrToString(currentChanges));
         }
-        System.out.println(arrToString(grid));
-        WFCrenderer wfcr = new WFCrenderer(new int[][][] {grid, startingGrid});
+        System.out.println(arrToString(currentChanges));
+        WFCrenderer wfcr = new WFCrenderer(new int[][][] {currentChanges, startingGrid});
+    }
+
+    private class Change{
+        int x;
+        int y;
+        int to;
+        ArrayList<Change> childChanges = new ArrayList<>();
+        boolean goodChange = true;
+        public Change(int x, int y, int to){
+            this.x = x;
+            this.y = y;
+            this.to = to;
+        }
+        public void addChild(Change child){
+            childChanges.add(child);
+        }
+        public Change[] getChildren(){
+            return childChanges.toArray(new Change[0]);
+        }
     }
 
     private class Tile{
@@ -208,24 +270,24 @@ public class WFCMaker {
             validNeighbors.add(arrangement);
         }
 
-        public boolean checkPos(int x, int y){
+        public boolean checkPos(int x, int y, int[][] grid){
             //for each of the arrangements
             int validArrangements = validNeighbors.size();
             int[] neighbors = new int[dirs.length];
             for (int i = 0; i < dirs.length; i++) {
-                neighbors[i] = getTileAt(x+dirs[i][0], y+ dirs[i][1]);
+                neighbors[i] = getTileAt(grid, x+dirs[i][0], y+ dirs[i][1]);
             }
             for (int[] arrangement : validNeighbors) {
                 // check the dirs
                 int goodTiles = 0;
                 for (int d = 0; d < dirs.length; d++) {
                     // ignore -1
-                    if(getTileAt(x+dirs[d][0], y+ dirs[d][1]) == -1 || arrangement[d] == -1 ){
+                    if(getTileAt(grid, x+dirs[d][0], y+ dirs[d][1]) == -1 || arrangement[d] == -1 ){
                         goodTiles++;
                         continue;
                     };
                     // if the tile at the dir is not the same as the arrangement say no
-                    if(getTileAt(x+dirs[d][0], y+ dirs[d][1]) == arrangement[d]) goodTiles++;
+                    if(getTileAt(grid, x+dirs[d][0], y+ dirs[d][1]) == arrangement[d]) goodTiles++;
                 }
                 if(((double)goodTiles)/((double)dirs.length)<1){
                     //System.out.println("x: "+ x + " y: " + y);
@@ -259,6 +321,12 @@ public class WFCMaker {
     }
 
     protected void setTileAt(int x, int y, int val){
+        if(x<0||x>=xsize||y<0||y>=ysize){
+            return;
+        }
+        grid[y][x] = val;
+    }
+    protected void setTileAt(int x, int y, int val, int[][]grid){
         if(x<0||x>=xsize||y<0||y>=ysize){
             return;
         }
@@ -340,6 +408,6 @@ public class WFCMaker {
             {1,1,1,1,1,1,1},
         }
         
-        ,6, 6, -1);
+        ,4, 4, -1);
     }
 }
