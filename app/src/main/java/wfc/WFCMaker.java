@@ -79,162 +79,89 @@ public class WFCMaker {
             }
         }
         boolean done = false;
-        ArrayList<int[]> interestedTiles = new ArrayList<>();
         int[][] currentChanges = new int[ysize][xsize];
-        Change initialChange = null;
-        ArrayList<Integer> changePath = new ArrayList<>();
         while(!done){
-            if(initialChange == null){
-                initialChange = new Change(r.nextInt(xsize), r.nextInt(ysize), r.nextInt(tiles.length));
-            }
-            for (int y = 0; y < ysize; y++) {
-                for (int x = 0; x < xsize; x++) {
-                    setTileAt(x, y, -1, currentChanges);
-                }
-            }      
+            //if our initial guess was impossible get a new one
+            int[] changexyt = findLeastApplicable(findPossibleChanges(startingGrid, new int[][] {}));
+            ArrayList<Integer> changePath = new ArrayList<>();
+            Change initialChange = new Change(changexyt[0], changexyt[1], changexyt[2]);
+            ArrayList<int[]> badChanges = new ArrayList<>();
             Change currentChange = initialChange;
-            for (int i = 0; i < changePath.size(); i++) {
-                setTileAt(currentChange.x, currentChange.y, currentChange.to, currentChanges);
-                currentChange = currentChange.getChildren()[changePath.get(i)];
-            }
-            // loop over all cells and find what they could be
-            boolean[][][] canBe = new boolean[xsize][ysize][tiles.length];
-            for (int y = 0; y < ysize; y++) {
-                for (int x = 0; x < xsize; x++) {
-                    if(getTileAt(x, y)!=-1)continue;
-                    for (int i = 0; i < tiles.length; i++) {
-                        canBe[x][y][i] = tiles[i].checkPos(x, y, currentChanges);
-                    }
-                }
-            }
-            // find the one with the least possiblities
-            boolean foundLeast = false;
-            // leastPossiblilitiesTiles
-            ArrayList<int[]> LPT = new ArrayList<>();
-
-            int leastPossiblilities = Integer.MAX_VALUE-1;
-            // untill we found the least possiblities
-            while (!foundLeast) {
-                // loop over all of the cells
-                boolean bad = false;
-                for (int y = 0; y < ysize; y++) {
-                    for (int x = 0; x < xsize; x++) {
-                        if(getTileAt(x, y) != -1) continue;
-                        boolean interested = false;
-                        if(!interestedTiles.isEmpty()){
-                            for (int i = 0; i < interestedTiles.size(); i++) {
-                                if(interestedTiles.get(i)[0]==x && interestedTiles.get(i)[1]==y){
-                                    interested = true;
-                                    break;
-                                }
-                            }
-                        }else{
-                            interested = true;
-                        }
-                        if(!interested){
-                            continue;
-                        }
-                        // loop over all of the possibilites
-                        int possibilityCount = 0;
-                        for (int i = 0; i < canBe[x][y].length; i++) {
-                            if(canBe[x][y][i]){
-                                possibilityCount++;
-                            }
-                        }
-                        // if we found the new least change it and continue the while loop
-                        if(possibilityCount<leastPossiblilities&&possibilityCount!=0){
-                            LPT.clear();
-                            leastPossiblilities = possibilityCount;
-                            bad = true;
-                            break;
-                        }
-                        // if we found one with the same ammount add it to the list
-                        if(possibilityCount!=0){
-
-                            LPT.add(new int[] {x,y});
-                        }
-                    }
-                    if (bad) {
-                        break;
-                    }
-                }
-                if (bad) {
+            while (initialChange != null) {
+                // apply the changes
+                currentChanges = applyChanges(initialChange, changePath.toArray(new Integer[0]));
+                // get the best change
+                int[] newChangeValues = findLeastApplicable(findPossibleChanges(currentChanges, badChanges.toArray(new int[0][0])));
+                // if its null
+                if(newChangeValues== null){
+                    // dont do it
+                    badChanges.add(newChangeValues);
                     continue;
                 }
-
-                foundLeast = true;
+                // otherwise add it to the current path
+                changePath.add(currentChange.getChildren().length);
+                Change newChange = new Change(newChangeValues[0], newChangeValues[1], newChangeValues[2]);
+                currentChange.addChild(newChange);
+                currentChange = newChange;
             }
-            if (LPT.size()==0) {
-                System.out.println("No possiblities found :((((");
-                System.out.println(arrToString(grid));
-                interestedTiles.clear();
-                for (int x = 0; x < xsize; x++) {
-                    for (int y = 0; y < ysize; y++) {
-                        setTileAt(x, y, -1);
-                    }
-                }
-                currentChange.goodChange = false;
-                for (int y = 0; y < ysize; y++) {
-                    for (int x = 0; x < xsize; x++) {
-                        setTileAt(x, y, -1, currentChanges);
-                    }
-                }      
-                currentChange = initialChange;
-                changePath.remove(changePath.size()-1);
-                for (int i = 0; i < changePath.size(); i++) {
-                    setTileAt(initialChange.x, initialChange.y, initialChange.to, currentChanges);
-                    currentChange = currentChange.getChildren()[changePath.get(i)];
-                }
-                System.out.println(currentChange.getChildren().length);
-                boolean badPath = true;
-                for (int i = 0; i < currentChange.getChildren().length; i++) {
-                    if(currentChange.getChildren()[i].goodChange){
-                        changePath.add(i);
-                        badPath = false;
-                        break;
-                    }
-                }
-                if(badPath){
-                    changePath.remove(changePath.size()-1);
-                }
-                continue;
-            }
-
-            // set one of the least possiblities to a possiblitiy
-
-            int ri = r.nextInt(LPT.size());
-            int x = LPT.get(ri)[0];
-            int y = LPT.get(ri)[1];
-            ArrayList<Integer> possiblities = new ArrayList<>();
-
-            for (int i = 0; i < canBe[x][y].length; i++) {
-                if(canBe[x][y][i]){
-                    possiblities.add(tiles[i].type);
-                }
-            }
-            int randindex2 = r.nextInt(possiblities.size());
-            
-            Change newChange = new Change(x, y, possiblities.get(randindex2));
-
-            changePath.add(currentChange.getChildren().length);
-
-            currentChange.addChild(newChange);
-
-            for (int[] dir : dirs) {
-                interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
-            }
-            // final check
-            done = true;
-            for (int i = 0; i < ysize; i++) {
-                for (int j = 0; j < xsize; j++) {
-                    if(getTileAt(currentChanges, j, i) == -1)
-                    done = false;
-                }
-            }
-            System.out.println(arrToString(currentChanges));
         }
         System.out.println(arrToString(currentChanges));
         WFCrenderer wfcr = new WFCrenderer(new int[][][] {currentChanges, startingGrid});
+    }
+
+    private int[][] applyChanges(Change c, Integer[] changePath){
+        int[][] grid = new int[ysize][xsize];
+        for (int y = 0; y < grid.length; y++) {
+            for (int x = 0; x < grid[y].length; x++) {
+                setTileAt(x, y, -1, grid);
+            }
+        }
+        Change currentChange = c;
+        for (int i = 0; i < changePath.length; i++) {
+            setTileAt(c.x, c.y, c.to, grid);
+            currentChange = currentChange.getChildren()[changePath[i]];
+        }
+        return grid;
+    }
+
+    private boolean[][][] findPossibleChanges(int[][] grid, int[][] exclude){
+        boolean[][][] canBe = new boolean[xsize][ysize][tiles.length];
+        for (int y = 0; y < ysize; y++) {
+            for (int x = 0; x < xsize; x++) {
+                if(getTileAt(x, y)!=-1)continue;
+                for (int i = 0; i < tiles.length; i++) {
+                    // if we already know this one doesnt work then dont do it
+                    boolean excludexyt = false;
+                    for (int e = 0; e < exclude.length; e++) {
+                        if(exclude[e][0]==x&&exclude[e][1]==y&&exclude[e][2]==tiles[i].type){
+                            excludexyt = true;
+                            break;
+                        }
+                    }
+                    if(excludexyt) continue;
+                    canBe[x][y][i] = tiles[i].checkPos(x, y, grid);
+                }
+            }
+        }
+        return canBe;
+    }
+
+    private int[] findLeastApplicable(boolean[][][] canBe){
+        ArrayList<int[]> leastPossiblePoses = new ArrayList<>();
+        for (int y = 0; y < ysize; y++) {
+            for (int x = 0; x < xsize; x++) {
+                for (int i = 0; i < canBe[x][y].length; i++) {
+                    if(canBe[x][y][i]){
+                        leastPossiblePoses.add(new int[] {x,y,i});
+                    }
+                }
+            }
+        }
+        // return null if we dont find any
+        if(leastPossiblePoses.size()==0){
+            return null;
+        }
+        return leastPossiblePoses.get(r.nextInt(leastPossiblePoses.size()));
     }
 
     private class Change{
