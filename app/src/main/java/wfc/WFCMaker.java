@@ -81,114 +81,64 @@ public class WFCMaker {
             }
         }
         boolean done = false;
-        ArrayList<int[]> interestedTiles = new ArrayList<>();
+        int x = 0;
+        int y = 0;
+        ArrayList<int[][]> badgrids = new ArrayList<>();
+        int[][] test = {
+            {-1,-1,-1},
+            {-1,-1,-1},
+            {-1,-1,-1},
+        };
         while(!done){
-            // loop over all cells and find what they could be
-            boolean[][][] canBe = new boolean[xsize][ysize][tiles.length];
-            for (int y = 0; y < ysize; y++) {
-                for (int x = 0; x < xsize; x++) {
-                    if(getTileAt(x, y)!=-1)continue;
-                    for (int i = 0; i < tiles.length; i++) {
-                        canBe[x][y][i] = tiles[i].checkPos(x, y);
-                    }
-                }
+            ArrayList<Integer> canBe = new ArrayList<>();
+            if(arrequals(grid, test)){
+                System.out.println("AAAAAAAAAAAAAAAAA");
             }
-            // find the one with the least possiblities
-            boolean foundLeast = false;
-            // leastPossiblilitiesTiles
-            ArrayList<int[]> LPT = new ArrayList<>();
-
-            int leastPossiblilities = Integer.MAX_VALUE-1;
-            // untill we found the least possiblities
-            while (!foundLeast) {
-                // loop over all of the cells
-                boolean bad = false;
-                for (int y = 0; y < ysize; y++) {
-                    for (int x = 0; x < xsize; x++) {
-                        if(getTileAt(x, y) != -1) continue;
-                        boolean interested = false;
-                        if(!interestedTiles.isEmpty()){
-                            for (int i = 0; i < interestedTiles.size(); i++) {
-                                if(interestedTiles.get(i)[0]==x && interestedTiles.get(i)[1]==y){
-                                    interested = true;
-                                    break;
-                                }
-                            }
-                        }else{
-                            interested = true;
-                        }
-                        if(!interested){
+            // find out what the tile can be
+            for (int i = 0; i < tiles.length; i++) {
+                if(tiles[i].checkPos(x, y)){
+                    // if this grid is one we know is allready bad
+                    int[][] newGrid = arrclone(grid);
+                    setTileAt(x, y, i, newGrid);
+                    boolean bad = false;
+                    for (int[][] grids : badgrids) {
+                        if(arrequals(grids, test)){
                             continue;
                         }
-                        // loop over all of the possibilites
-                        int possibilityCount = 0;
-                        for (int i = 0; i < canBe[x][y].length; i++) {
-                            if(canBe[x][y][i]){
-                                possibilityCount++;
-                            }
-                        }
-                        // if we found the new least change it and continue the while loop
-                        //if(possibilityCount<leastPossiblilities&&possibilityCount!=0){
-                        //    LPT.clear();
-                        //    leastPossiblilities = possibilityCount;
-                        //    bad = true;
-                        //    break;
-                        //}
-                        // if we found one with the same ammount add it to the list
-                        if(possibilityCount!=0){
-
-                            LPT.add(new int[] {x,y});
+                        if(arrequals(grids, newGrid)){
+                            System.out.println(arrToString(grids));
+                            bad = true;
+                            break;
                         }
                     }
-                    if (bad) {
-                        break;
-                    }
+                    // dont add it
+                    if(bad) continue;
+                    canBe.add(i);
                 }
-                if (bad) {
-                    continue;
-                }
-
-                foundLeast = true;
             }
-            if (LPT.size()==0) {
-                System.out.println("LPT No possiblities found :((((");
-                System.out.println(arrToString(grid));
-                interestedTiles.clear();
-                for (int x = 0; x < xsize; x++) {
-                    for (int y = 0; y < ysize; y++) {
-                        setTileAt(x, y, -1);
-                    }
+            // if this grid has no solutions say its bad
+            if(canBe.size() == 0){
+                badgrids.add(arrclone(grid));
+                System.out.println(arrToString(arrclone(grid)));
+                setTileAt(x, y, -1);
+                x--;
+                if(x<0){
+                    x=xsize-1;
+                    y--;
                 }
                 continue;
             }
-
-            // set one of the least possiblities to a possiblitiy
-
-            int ri = r.nextInt(LPT.size());
-            int x = LPT.get(ri)[0];
-            int y = LPT.get(ri)[1];
-            ArrayList<Integer> possiblities = new ArrayList<>();
-
-            for (int i = 0; i < canBe[x][y].length; i++) {
-                if(canBe[x][y][i]){
-                    possiblities.add(tiles[i].type);
-                }
+            // otherwise set the tile and continue
+            setTileAt(x, y, canBe.get(r.nextInt(canBe.size())));
+            x++;
+            if(x==xsize){
+                x=0;
+                y++;
             }
-            int randindex2 = r.nextInt(possiblities.size());
-            
-            setTileAt(x, y, possiblities.get(randindex2));
-                
-            for (int[] dir : dirs) {
-                interestedTiles.add(new int[] {dir[0] + x, dir[1] + y});
+            if(x==0&&y==ysize){
+                done=true;
             }
-            // final check
-            done = true;
-            for (int i = 0; i < ysize; i++) {
-                for (int j = 0; j < xsize; j++) {
-                    if(getTileAt(j, i) == -1)
-                    done = false;
-                }
-            }
+            System.out.println(arrToString(grid));
         }
         System.out.println(arrToString(grid));
         WFCrenderer wfcr = new WFCrenderer(new int[][][] {grid, startingGrid});
@@ -251,6 +201,29 @@ public class WFCMaker {
         }
     }
 
+    boolean arrequals(int[][] arr1, int[][] arr2){
+        if(arr1.length!=arr2.length||arr1[0].length!=arr2[0].length) return false;
+        for (int i = 0; i < arr1.length; i++) {
+            for (int j = 0; j < arr1[0].length; j++) {
+                if(arr1[i][j]!=arr2[i][j]) return false;
+            }
+        }
+        System.out.println(arrToString(arr1));
+        System.out.println("Equals:");
+        System.out.println(arrToString(arr2));
+        return true;
+    }
+
+    int[][] arrclone(int[][] arr1){
+        int[][] arr2 = new int[arr1.length][arr1[0].length];
+        for (int i = 0; i < arr1.length; i++) {
+            for (int j = 0; j < arr1[0].length; j++) {
+                arr2[i][j] = arr1[i][j];
+            }
+        }
+        return arr2;
+    }
+
     protected int getTileAt(int x, int y){
         if(x<0||x>=xsize||y<0||y>=ysize){
             return -1;
@@ -259,6 +232,13 @@ public class WFCMaker {
     }
 
     protected void setTileAt(int x, int y, int val){
+        if(x<0||x>=xsize||y<0||y>=ysize){
+            return;
+        }
+        grid[y][x] = val;
+    }
+
+    protected void setTileAt(int x, int y, int val, int[][] grid){
         if(x<0||x>=xsize||y<0||y>=ysize){
             return;
         }
@@ -340,6 +320,6 @@ public class WFCMaker {
             {1,1,1,1,1,1,1},
         }
         
-        ,4, 10, -1);
+        ,3, 3, -1);
     }
 }
