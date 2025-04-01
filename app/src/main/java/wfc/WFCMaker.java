@@ -82,20 +82,21 @@ public class WFCMaker {
         int[][] currentChanges = new int[ysize][xsize];
         while(!done){
             //if our initial guess was impossible get a new one
-            int[] changexyt = findLeastApplicable(findPossibleChanges(startingGrid, new int[][] {}));
+            int[] changexyt = findLeastApplicable(findPossibleChanges(startingGrid,  new int[][] {}),new int[][] {});
             ArrayList<Integer> changePath = new ArrayList<>();
             Change initialChange = new Change(changexyt[0], changexyt[1], changexyt[2]);
             ArrayList<int[]> badChanges = new ArrayList<>();
+            ArrayList<int[]> interestedTiles = new ArrayList<>();
             Change currentChange = initialChange;
             while (initialChange != null) {
                 // apply the changes
                 currentChanges = applyChanges(initialChange, changePath.toArray(new Integer[0]));
                 // get the best change
-                int[] newChangeValues = findLeastApplicable(findPossibleChanges(currentChanges, badChanges.toArray(new int[0][0])));
+                int[] newChangeValues = findLeastApplicable(findPossibleChanges(currentChanges, badChanges.toArray(new int[0][0])), interestedTiles.toArray(new int[0][0]));
                 // if its null
                 if(newChangeValues== null){
                     // dont do it
-                    badChanges.add(newChangeValues);
+                    badChanges.add(new int[]{currentChange.x,currentChange.y,currentChange.to});
                     continue;
                 }
                 // otherwise add it to the current path
@@ -103,6 +104,14 @@ public class WFCMaker {
                 Change newChange = new Change(newChangeValues[0], newChangeValues[1], newChangeValues[2]);
                 currentChange.addChild(newChange);
                 currentChange = newChange;
+                for (int[] ia : dirs) {
+                    int x = currentChange.x + ia[0];
+                    int y = currentChange.y + ia[1];
+                    if(x>=0&&x<xsize&&y>=0&&y<ysize)
+                    interestedTiles.add(new int[] {x,y});
+                }
+                System.out.println(currentChange);
+                System.out.println(arrToString(currentChanges));
             }
         }
         System.out.println(arrToString(currentChanges));
@@ -146,17 +155,44 @@ public class WFCMaker {
         return canBe;
     }
 
-    private int[] findLeastApplicable(boolean[][][] canBe){
+    private int[] findLeastApplicable(boolean[][][] canBe, int[][] interestedPositions){
         ArrayList<int[]> leastPossiblePoses = new ArrayList<>();
-        for (int y = 0; y < ysize; y++) {
-            for (int x = 0; x < xsize; x++) {
+        // check the ones we are interested in
+        if(interestedPositions.length!=0){
+            for (int[] is : interestedPositions) {
+                int x = is[0];
+                int y = is[1];
+                ArrayList<Integer> possiblities = new ArrayList<>();
                 for (int i = 0; i < canBe[x][y].length; i++) {
                     if(canBe[x][y][i]){
-                        leastPossiblePoses.add(new int[] {x,y,i});
+                        possiblities.add(i);
                     }
+                }
+                if(possiblities.size()==0){
+                    System.out.println("interestedPos");
+                    return null;
+                }
+                leastPossiblePoses.add(new int[] {x,y,possiblities.get(r.nextInt(possiblities.size()))});
+            }
+        }else{
+            // if we are interested in none then check all
+            for (int y = 0; y < ysize; y++) {
+                for (int x = 0; x < xsize; x++) {
+                    ArrayList<Integer> possiblities = new ArrayList<>();
+                    for (int i = 0; i < canBe[x][y].length; i++) {
+                        if(canBe[x][y][i]){
+                            possiblities.add(i);
+                        }
+                    }
+                    if(possiblities.size()==0){
+                        System.out.println("allpos");
+                        return null;
+                    }
+                    leastPossiblePoses.add(new int[] {x,y,possiblities.get(r.nextInt(possiblities.size()))});
                 }
             }
         }
+        // if we found none die
         // return null if we dont find any
         if(leastPossiblePoses.size()==0){
             return null;
@@ -180,6 +216,10 @@ public class WFCMaker {
         }
         public Change[] getChildren(){
             return childChanges.toArray(new Change[0]);
+        }
+        @Override
+        public String toString(){
+            return "x: " + x + "y: " + y + "to: " + to;
         }
     }
 
