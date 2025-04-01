@@ -68,8 +68,8 @@ public class WFCrenderer extends JFrame{
          bg.setColor(Color.BLACK);
          int offset = 0;
          for (int[][] grid : grids) {
-            drawGrid(grid, bg, offset*grid[0].length-1, 0);
-            offset++;
+            drawGrid(grid, bg, offset, 0);
+            offset+=grid[0].length*3;
          }
          g.drawImage(bi,0,0,null);
     }
